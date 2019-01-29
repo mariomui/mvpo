@@ -1,0 +1,72 @@
+static getDerivedStateFromProps(nextProps, prevState) {
+    const { games, range } = nextProps;
+    if (!games) return {};
+    const extent = d3.extent(games, d => d.date);
+    console.log(extent, 'extent');
+    // jan 1 2017, dec 31 2017
+    const xScale = d3
+      .scaleTime()
+      .domain(extent)
+      .range([margin.left, width - margin.right]);
+
+    const [min, max] = d3.extent(games, d => d.high);
+    // 49, 104
+    console.log(min, 'yextent');
+    // 49 maps to 450, 104 maps to 0
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, max])
+      .range([height - margin.top, margin.bottom]);
+    const colorExtent = d3.extent(games, d => d.avg);
+    const colorScale = d3
+      .scaleSequential()
+      .domain(colorExtent)
+      .interpolator(d3.interpolateRdYlBu);
+
+    const { games } = props;
+    debugger;
+
+    const bars = games.map((d, key) => {
+      const isColored = !range.length || (range[0] < d.date && d.date < range[1]);
+      key % 125 || console.log('#', key, d, '!!!');
+      return {
+        x: xScale(d.date),
+        y: yScale(d.high),
+        height: yScale(d.low) - yScale(d.high),
+        fill: isColored ? colorScale(d.avg) : '#ccc',
+      };
+    });
+    return { bars, xScale, yScale };
+  }
+
+  componentDidMount() {
+    this.brush = d3
+      .brushX()
+      .extent([
+        [margin.left, margin.top],
+        [width - margin.right, height - margin.top],
+      ])
+      .on('end', () => {
+        console.log('ey');
+        console.log(d3.event.selection, 'hss');
+        if (!d3.event.selection) {
+          this.props.updateRange([]);
+          return;
+        }
+        const [minX, maxX] = d3.event.selection;
+        const range = [
+          this.state.xScale.invert(minX),
+          this.state.xScale.invert(maxX),
+        ];
+        console.log(range, 'range');
+        this.props.updateRange(range);
+      });
+    d3.select(this.refs.brush).call(this.brush);
+  }
+
+  componentDidUpdate() {
+    this.xAxis.scale(this.state.xScale);
+    d3.select(this.refs.xAxis).call(this.xAxis);
+    this.yAxis.scale(this.state.yScale);
+    d3.select(this.refs.yAxis).call(this.yAxis);
+  }
